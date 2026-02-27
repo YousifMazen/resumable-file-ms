@@ -14,8 +14,15 @@ import ProgressBar from 'primevue/progressbar';
 const transferStore = useTransferStore();
 const { uploads, downloads } = storeToRefs(transferStore);
 
-const { pauseUpload, resumeUpload, cancelUpload, pauseDownload, resumeDownload, cancelDownload } =
-  transferStore;
+const {
+  pauseUpload,
+  resumeUpload,
+  cancelUpload,
+  pauseDownload,
+  resumeDownload,
+  cancelDownload,
+  clearTransfers,
+} = transferStore;
 </script>
 
 <template>
@@ -26,14 +33,32 @@ const { pauseUpload, resumeUpload, cancelUpload, pauseDownload, resumeDownload, 
     :draggable="true"
     :dismissableMask="false"
     position="bottomright"
-    :style="{ width: '400px', margin: '2rem', zIndex: 9999 }"
     :showHeader="true"
-    class="border border-surface-200 dark:border-surface-700 shadow-xl"
+    class="border border-surface-200 dark:border-surface-700 shadow-xl w-100 z-9999"
     :pt="{
-      mask: { style: { pointerEvents: 'none', backgroundColor: 'transparent' } },
+      mask: { style: { pointerEvents: 'none', backgroundColor: 'transparent', padding: '2rem' } },
       root: { style: { pointerEvents: 'auto' } },
     }"
   >
+    <template #header>
+      <div class="flex items-center justify-between w-full">
+        <span class="font-bold whitespace-nowrap hidden">Transfers</span>
+        <Button
+          v-if="Object.keys(uploads).length > 0 || Object.keys(downloads).length > 0"
+          type="button"
+          icon="pi pi-filter-slash"
+          label="Clear Finished"
+          class="ml-auto -mt-2"
+          text
+          size="small"
+          severity="secondary"
+          @mousedown.stop
+          @touchstart.stop
+          @click="clearTransfers"
+        />
+      </div>
+    </template>
+
     <div class="flex flex-col gap-4 max-h-100 overflow-y-auto pr-2 mt-2">
       <!-- Uploads -->
       <div v-if="Object.keys(uploads).length > 0">

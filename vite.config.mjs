@@ -10,6 +10,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
   optimizeDeps: {
     noDiscovery: true,
+    include: ['tus-js-client'],
   },
   server: {
     watch: {

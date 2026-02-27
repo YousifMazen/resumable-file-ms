@@ -21,6 +21,7 @@ import Button from 'primevue/button';
 import Column from 'primevue/column';
 import DataTable from 'primevue/datatable';
 import DatePicker from 'primevue/datepicker';
+import FileUpload from 'primevue/fileupload';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
@@ -79,6 +80,9 @@ const isEditing = ref(false);
 const formLoading = ref(false);
 const currentNode = ref(null);
 
+const isUploadVisible = ref(false);
+const uploadFiles = ref([]);
+
 // Dialog Actions
 const openDeleteConfirm = data => {
   itemToDelete.value = data;
@@ -106,34 +110,61 @@ const openForm = (data, actionType) => {
   formLoading.value = false;
   isEditing.value = actionType === 'edit';
 
-  if (actionType === 'uploadFile') {
-    // We can simulate creating a file record here, then trigger upload.
-    formData.value = { name: '' };
-    formHeader.value = 'Upload New File';
-  } else {
-    formData.value = isEditing.value ? { ...data } : { name: '' };
-    formHeader.value = `Edit File`;
-  }
+  formData.value = isEditing.value ? { ...data } : { name: '' };
+  formHeader.value = `Edit File`;
 
   currentNode.value = data;
   isFormVisible.value = true;
 };
 
-// Saves the form data by either creating a new file record (and starting an upload)
-// or updating an existing one.
+// Opens the file upload dialog and resets the state.
+const openUploadDialog = () => {
+  uploadFiles.value = [];
+  isUploadVisible.value = true;
+};
+
+// Captures selected files allowing name editing before upload.
+const onFileSelect = event => {
+  if (!event.files || !event.files.length) return;
+
+  uploadFiles.value = Array.from(event.files).map(f => ({
+    file: f,
+    originalName: f.name,
+    name: f.name,
+  }));
+};
+
+// Saves the upload metadata and dispatches the TUS file transfer.
+const saveUpload = async () => {
+  if (!uploadFiles.value.length) {
+    isUploadVisible.value = false;
+    return;
+  }
+  formLoading.value = true;
+  try {
+    for (const item of uploadFiles.value) {
+      const fileData = {
+        name: item.name,
+        size: item.file.size,
+        type: item.file.type || 'application/octet-stream',
+      };
+
+      const newFile = await fileStore.createFile(collectionId, fileData);
+      transferStore.startUpload(item.file, newFile.id);
+    }
+    isUploadVisible.value = false;
+  } catch (e) {
+    console.error(`Failed to initiate upload:`, e);
+  } finally {
+    formLoading.value = false;
+  }
+};
+
+// Saves the form data by updating an existing file record.
 const saveForm = async () => {
   formLoading.value = true;
   try {
-    if (!isEditing.value) {
-      // Create file record
-      const newFile = await fileStore.createFile(collectionId, formData.value);
-
-      // Also start upload via transfer store using a dummy JS file object
-      const dummyFile = new File(['dummy content'], formData.value.name || 'Unnamed File.txt', {
-        type: 'text/plain',
-      });
-      transferStore.startUpload(dummyFile, newFile.id);
-    } else {
+    if (isEditing.value) {
       await fileStore.updateFile(currentNode.value.id, formData.value);
     }
     isFormVisible.value = false;
@@ -162,6 +193,15 @@ const formatDate = date => {
     month: 'short',
     day: 'numeric',
   });
+};
+
+// Formats speed in Bytes/s to a human readable format
+const formatSpeed = bytes => {
+  if (bytes === 0 || !bytes) return '0 B/s';
+  const k = 1024;
+  const sizes = ['B/s', 'KB/s', 'MB/s', 'GB/s'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 </script>
 
@@ -204,7 +244,7 @@ const formatDate = date => {
                 type="button"
                 icon="pi pi-fw pi-upload"
                 label="Upload File"
-                @click="openForm(null, 'uploadFile')"
+                @click="openUploadDialog"
               />
               <Button
                 type="button"
@@ -295,8 +335,12 @@ const formatDate = date => {
                   style="height: 1.5rem; flex: 1"
                   class="w-full text-xs font-semibold select-none flex items-center justify-center relative overflow-hidden"
                 ></ProgressBar>
-                <div class="text-surface-500 font-mono whitespace-nowrap w-12 text-right">
-                  {{ transferStore.uploads[data.id].status === 'paused' ? 'Paused' : '1.2M/s' }}
+                <div class="text-surface-500 font-mono whitespace-nowrap w-17.5 text-right">
+                  {{
+                    transferStore.uploads[data.id].status === 'paused'
+                      ? 'Paused'
+                      : formatSpeed(transferStore.uploads[data.id].speed)
+                  }}
                 </div>
                 <div class="flex gap-0 items-center justify-center shrink-0">
                   <Button
@@ -350,8 +394,12 @@ const formatDate = date => {
                   style="height: 1.5rem; flex: 1"
                   class="w-full text-xs font-semibold select-none flex items-center justify-center relative overflow-hidden"
                 ></ProgressBar>
-                <div class="text-surface-500 font-mono whitespace-nowrap w-12 text-right">
-                  {{ transferStore.downloads[data.id].status === 'paused' ? 'Paused' : '2.4M/s' }}
+                <div class="text-surface-500 font-mono whitespace-nowrap w-17.5 text-right">
+                  {{
+                    transferStore.downloads[data.id].status === 'paused'
+                      ? 'Paused'
+                      : formatSpeed(transferStore.downloads[data.id].speed)
+                  }}
                 </div>
                 <div class="flex gap-0 items-center justify-center shrink-0">
                   <Button
@@ -401,6 +449,10 @@ const formatDate = date => {
                 @click="downloadFile(data)"
               />
               <Button
+                v-if="
+                  !transferStore.uploads[data.id] ||
+                  transferStore.uploads[data.id].status === 'completed'
+                "
                 icon="pi pi-pencil"
                 severity="secondary"
                 text
@@ -410,6 +462,10 @@ const formatDate = date => {
                 @click="openForm(data, 'edit')"
               />
               <Button
+                v-if="
+                  !transferStore.uploads[data.id] ||
+                  transferStore.uploads[data.id].status === 'completed'
+                "
                 icon="pi pi-trash"
                 severity="danger"
                 text
@@ -442,6 +498,43 @@ const formatDate = date => {
         <div class="flex flex-col gap-2">
           <label for="name" class="font-semibold">Name</label>
           <InputText id="name" v-model="formData.name" placeholder="Enter name..." autofocus />
+        </div>
+      </form>
+    </FormDialog>
+
+    <FormDialog
+      v-model:visible="isUploadVisible"
+      header="Upload Files"
+      :loading="formLoading"
+      @save="saveUpload"
+    >
+      <form class="flex flex-col gap-4" @submit.prevent="saveUpload">
+        <FileUpload
+          mode="basic"
+          multiple
+          chooseLabel="Select Files"
+          chooseIcon="pi pi-fw pi-file"
+          @select="onFileSelect"
+        />
+
+        <div
+          v-if="uploadFiles.length > 0"
+          class="flex flex-col gap-4 mt-2 border-t border-surface-200 dark:border-surface-700 pt-4"
+        >
+          <div v-for="(item, index) in uploadFiles" :key="index" class="flex flex-col gap-2">
+            <label
+              :for="'filename-' + index"
+              class="font-semibold text-sm whitespace-nowrap overflow-hidden text-ellipsis"
+              :title="item.originalName"
+            >
+              {{ item.originalName }}
+            </label>
+            <InputText
+              :id="'filename-' + index"
+              v-model="item.name"
+              placeholder="Enter file name..."
+            />
+          </div>
         </div>
       </form>
     </FormDialog>

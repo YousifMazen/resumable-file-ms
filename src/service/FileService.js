@@ -10,7 +10,16 @@ class FileService {
    * @returns {Promise<{data: Array}>} List of file objects
    */
   async getFilesByCollection(collectionId) {
-    return await ApiService.get(`/files`, { collectionId });
+    if (!collectionId) return { data: [] };
+
+    // JSON-Server coercively parses numeric strings in the route query (e.g. ?collectionId=1276) into Integers.
+    if (/^\d+$/.test(collectionId)) {
+      const response = await ApiService.get('/files');
+      const allFiles = Array.isArray(response.data) ? response.data : [];
+      return { data: allFiles.filter(val => val.collectionId === String(collectionId)) };
+    }
+
+    return await ApiService.get('/files', { collectionId: String(collectionId) });
   }
 
   /**

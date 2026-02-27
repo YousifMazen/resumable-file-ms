@@ -1,5 +1,6 @@
 import DownloadService from '@/service/DownloadService';
 import UploadService from '@/service/UploadService';
+import { useFileStore } from '@/stores/FileStore';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 
@@ -8,6 +9,7 @@ import { ref } from 'vue';
  * @property {string} id - Unique ID of the upload
  * @property {string} fileName - Name of the file
  * @property {number} progress - Progress percentage (0-100)
+ * @property {number} speed - Upload speed in bytes per second
  * @property {('uploading'|'paused'|'completed'|'error')} status - Current upload status
  * @property {any} uploadInstance - The TUS/Upload instance for controlling the transfer
  */
@@ -17,6 +19,7 @@ import { ref } from 'vue';
  * @property {string} id - Unique ID of the download
  * @property {string} fileName - Name of the file
  * @property {number} progress - Progress percentage (0-100)
+ * @property {number} speed - Download speed in bytes per second
  * @property {('downloading'|'paused'|'completed'|'error')} status - Current download status
  * @property {any} abortController - The controller for pausing/resuming/aborting the download
  */
@@ -48,8 +51,9 @@ export const useTransferStore = defineStore('transfer', () => {
    * Starts a new resumable upload.
    * @param {File} file - The file object to upload
    * @param {string} [fileId] - Optional predefined ID for the file
+   * @param {Object} [options] - Optional configurations and callbacks
    */
-  const startUpload = (file, fileId) => {
+  const startUpload = (file, fileId, options = {}) => {
     const id = fileId || Date.now().toString(); // unique ID
 
     // Create new upload state
@@ -57,20 +61,29 @@ export const useTransferStore = defineStore('transfer', () => {
       id,
       fileName: file.name,
       progress: 0,
+      speed: 0,
       status: 'uploading',
       uploadInstance: null,
     };
 
     // Trigger network logic
     const instance = UploadService.startUpload(file, {
-      onProgress: p => {
-        if (uploads.value[id]) uploads.value[id].progress = p;
+      onProgress: (p, speed = 0) => {
+        if (uploads.value[id]) {
+          uploads.value[id].progress = p;
+          uploads.value[id].speed = speed;
+        }
       },
       onSuccess: () => {
         if (uploads.value[id]) uploads.value[id].status = 'completed';
+        if (options && options.onSuccess) options.onSuccess();
       },
       onError: () => {
         if (uploads.value[id]) uploads.value[id].status = 'error';
+        // Automatically purge the DB record if the TUS protocol entirely fails
+        useFileStore()
+          .deleteFile(id)
+          .catch(err => console.error('Failed to cleanup DB on error:', err));
       },
     });
 
@@ -125,6 +138,9 @@ export const useTransferStore = defineStore('transfer', () => {
       }
       delete uploads.value[id];
       uploads.value = { ...uploads.value };
+      useFileStore()
+        .deleteFile(id)
+        .catch(err => console.error('Failed to cleanup DB on cancel:', err));
     }
   };
 
@@ -143,13 +159,17 @@ export const useTransferStore = defineStore('transfer', () => {
       id,
       fileName: fileRecord.name || 'Unknown File',
       progress: 0,
+      speed: 0,
       status: 'downloading',
       abortController: null,
     };
 
     const controller = DownloadService.startDownload(id, {
-      onProgress: p => {
-        if (downloads.value[id]) downloads.value[id].progress = p;
+      onProgress: (p, speed = 0) => {
+        if (downloads.value[id]) {
+          downloads.value[id].progress = p;
+          downloads.value[id].speed = speed;
+        }
       },
       onSuccess: () => {
         if (downloads.value[id]) downloads.value[id].status = 'completed';
@@ -209,6 +229,73 @@ export const useTransferStore = defineStore('transfer', () => {
     }
   };
 
+  /**
+   * Clears all completed and failed transfers from the UI map.
+   */
+  const clearTransfers = () => {
+    for (const id in uploads.value) {
+      if (uploads.value[id].status === 'completed' || uploads.value[id].status === 'error') {
+        delete uploads.value[id];
+      }
+    }
+    for (const id in downloads.value) {
+      if (downloads.value[id].status === 'completed' || downloads.value[id].status === 'error') {
+        delete downloads.value[id];
+      }
+    }
+    uploads.value = { ...uploads.value };
+    downloads.value = { ...downloads.value };
+  };
+
+  // --- Network State Handling ---
+  window.addEventListener('offline', () => {
+    // When offline is detected, forcefully abort the uploads to prevent hung network states
+    // We mark them as 'network_paused' so we know exactly which ones to automatically wake up later
+    for (const id in uploads.value) {
+      if (uploads.value[id].status === 'uploading') {
+        if (uploads.value[id].uploadInstance && uploads.value[id].uploadInstance.abort) {
+          uploads.value[id].uploadInstance.abort();
+        }
+        uploads.value[id].status = 'network_paused';
+      }
+    }
+    for (const id in downloads.value) {
+      if (downloads.value[id].status === 'downloading') {
+        if (downloads.value[id].abortController && downloads.value[id].abortController.pause) {
+          downloads.value[id].abortController.pause();
+        }
+        downloads.value[id].status = 'network_paused';
+      }
+    }
+    uploads.value = { ...uploads.value };
+    downloads.value = { ...downloads.value };
+  });
+
+  window.addEventListener('online', () => {
+    // When back online, automatically resume anything that was paused due to the network drop, or crashed out completely
+    for (const id in uploads.value) {
+      if (uploads.value[id].status === 'network_paused' || uploads.value[id].status === 'error') {
+        if (uploads.value[id].uploadInstance && uploads.value[id].uploadInstance.start) {
+          uploads.value[id].uploadInstance.start();
+        }
+        uploads.value[id].status = 'uploading';
+      }
+    }
+    for (const id in downloads.value) {
+      if (
+        downloads.value[id].status === 'network_paused' ||
+        downloads.value[id].status === 'error'
+      ) {
+        if (downloads.value[id].abortController && downloads.value[id].abortController.start) {
+          downloads.value[id].abortController.start();
+        }
+        downloads.value[id].status = 'downloading';
+      }
+    }
+    uploads.value = { ...uploads.value };
+    downloads.value = { ...downloads.value };
+  });
+
   return {
     uploads,
     downloads,
@@ -222,5 +309,6 @@ export const useTransferStore = defineStore('transfer', () => {
     pauseDownload,
     resumeDownload,
     cancelDownload,
+    clearTransfers,
   };
 });
