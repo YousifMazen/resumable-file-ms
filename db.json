@@ -1,0 +1,273 @@
+{
+  "users": [
+    {
+      "id": "1",
+      "username": "admin",
+      "email": "admin@admin.com",
+      "password": "password123",
+      "role": "admin"
+    },
+    {
+      "id": "2",
+      "username": "employee",
+      "email": "employee@employee.com",
+      "password": "password123",
+      "role": "employee"
+    }
+  ],
+  "cases": [
+    {
+      "id": "c1",
+      "name": "Case #1",
+      "created": "2026-02-26T12:00:00Z",
+      "updated": "2026-02-26T12:00:00Z"
+    },
+    {
+      "id": "6e15",
+      "name": "Test ggf",
+      "created": "2026-02-26T16:56:56.445Z",
+      "updated": "2026-02-26T17:40:55.719Z",
+      "type": "Case"
+    },
+    {
+      "id": "3c7b",
+      "name": "Test  ",
+      "created": "2026-02-26T16:57:02.660Z",
+      "updated": "2026-02-26T21:17:03.876Z",
+      "type": "Case"
+    }
+  ],
+  "collections": [
+    {
+      "id": "cl1",
+      "caseId": "c1",
+      "name": "Primary Evidence",
+      "created": "2026-02-26T12:05:00Z",
+      "updated": "2026-02-26T12:05:00Z"
+    },
+    {
+      "id": "23f0",
+      "name": "Test 2",
+      "created": "2026-02-26T17:12:34.390Z",
+      "updated": "2026-02-26T17:12:34.390Z",
+      "caseId": "6e15"
+    },
+    {
+      "id": "6c1e",
+      "name": "vbcvbvv",
+      "created": "2026-02-26T17:41:47.933Z",
+      "updated": "2026-02-26T17:41:47.933Z",
+      "caseId": null
+    },
+    {
+      "id": "20ca",
+      "name": "Test ",
+      "created": "2026-02-26T20:18:41.860Z",
+      "updated": "2026-02-26T20:18:41.860Z",
+      "caseId": "3c7b",
+      "type": "Collection"
+    },
+    {
+      "id": "2b9c",
+      "name": "Test ",
+      "created": "2026-02-26T20:41:48.339Z",
+      "updated": "2026-02-26T20:41:48.339Z",
+      "caseId": "6e15",
+      "type": "Collection"
+    },
+    {
+      "id": "1a1f",
+      "name": "Test 2",
+      "created": "2026-02-26T21:17:45.092Z",
+      "updated": "2026-02-26T21:17:45.092Z",
+      "caseId": "3c7b",
+      "type": "Collection"
+    },
+    {
+      "id": "4e1c",
+      "name": "Feb 27, 2026, 3:53:01 PM",
+      "created": "2026-02-27T12:53:01.986Z",
+      "updated": "2026-02-27T12:53:01.986Z",
+      "caseId": "3c7b",
+      "type": "Collection"
+    },
+    {
+      "id": "6886",
+      "name": "Feb 27, 2026, 3:53 PM",
+      "created": "2026-02-27T12:53:10.825Z",
+      "updated": "2026-02-27T12:53:10.825Z",
+      "caseId": "3c7b",
+      "type": "Collection"
+    }
+  ],
+  "files": [
+    {
+      "id": "f1",
+      "collectionId": "cl1",
+      "name": "photo_evidence.jpg",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T12:10:00Z"
+    },
+    {
+      "id": "f7f1",
+      "name": "Test 2",
+      "collectionId": null,
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T20:17:28.935Z"
+    },
+    {
+      "id": "9298",
+      "name": "Test ",
+      "collectionId": "20ca",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T20:43:04.992Z"
+    },
+    {
+      "id": "3fb0",
+      "name": "Test 2",
+      "collectionId": "20ca",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T20:43:16.881Z"
+    },
+    {
+      "id": "ebdd",
+      "name": "YOUSIF ALTEKREETI",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T20:54:33.210Z"
+    },
+    {
+      "id": "086e",
+      "name": "Test 2",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:01:04.436Z"
+    },
+    {
+      "id": "1b6f",
+      "name": "Test 2",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:07:14.239Z"
+    },
+    {
+      "id": "625f",
+      "name": "YOUSIF ALTEKREETI",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:11:53.248Z"
+    },
+    {
+      "id": "d87b",
+      "name": "hgf",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:00.291Z"
+    },
+    {
+      "id": "7b7d",
+      "name": "hgf",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:01.684Z"
+    },
+    {
+      "id": "d4ea",
+      "name": "hg",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:02.953Z"
+    },
+    {
+      "id": "e41a",
+      "name": "hgf",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:04.097Z"
+    },
+    {
+      "id": "2966",
+      "name": "hgf",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:05.404Z"
+    },
+    {
+      "id": "0830",
+      "name": "fh",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:06.531Z"
+    },
+    {
+      "id": "f631",
+      "name": "fh",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:07.607Z"
+    },
+    {
+      "id": "9fbc",
+      "name": "f",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:10.460Z"
+    },
+    {
+      "id": "ca45",
+      "name": "hghf",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:13:14.537Z"
+    },
+    {
+      "id": "9bdf",
+      "name": "ds",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:15:17.368Z"
+    },
+    {
+      "id": "805d",
+      "name": "gd",
+      "collectionId": "cl1",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-26T21:16:11.705Z"
+    },
+    {
+      "id": "3e28",
+      "name": "ds",
+      "collectionId": "20ca",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-27T11:32:38.417Z"
+    },
+    {
+      "id": "8fb9",
+      "name": "ds",
+      "collectionId": "20ca",
+      "type": "File",
+      "size": 1048576,
+      "uploaded": "2026-02-27T11:38:27.888Z"
+    }
+  ]
+}

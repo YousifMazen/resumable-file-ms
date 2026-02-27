@@ -1,16 +1,17 @@
 <script setup>
 /**
- * Dashboard Component
+ * CollectionsPage Component
  *
- * The main landing page for authenticated users.
+ * Displays and manages the list of collections within a specific case.
  * Features include:
- * - Case management (list/create/edit/delete)
  * - Data table with sorting and filtering
- * - Navigation to collections within a case
+ * - Global search
+ * - Collection management (create/edit/delete)
+ * - Navigation to files within a collection
  */
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue';
 import FormDialog from '@/components/dialogs/FormDialog.vue';
-import { useCaseStore } from '@/stores/CaseStore';
+import { useCollectionStore } from '@/stores/CollectionStore';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { storeToRefs } from 'pinia';
 import Button from 'primevue/button';
@@ -21,11 +22,14 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
+const route = useRoute();
 const router = useRouter();
-const caseStore = useCaseStore();
-const { cases, loading } = storeToRefs(caseStore);
+const caseId = route.params.id;
+
+const collectionStore = useCollectionStore();
+const { collections, loading } = storeToRefs(collectionStore);
 
 const rows = ref(10);
 const filters = ref();
@@ -57,7 +61,7 @@ const clearFilters = () => {
 };
 
 onMounted(() => {
-  caseStore.loadCases();
+  collectionStore.loadCollections(caseId);
 });
 
 // UI State for Dialogs
@@ -76,16 +80,16 @@ const currentNode = ref(null);
 // Opens the deletion confirmation dialog
 const openDeleteConfirm = data => {
   itemToDelete.value = data;
-  confirmHeader.value = `Delete Case`;
+  confirmHeader.value = `Delete Collection`;
   confirmMessage.value = `Are you sure you want to delete ${data.name}?`;
   isConfirmVisible.value = true;
 };
 
-// Executes the deletion of the selected case
+// Executes the deletion of the selected collection
 const confirmDelete = async () => {
   try {
     if (itemToDelete.value) {
-      await caseStore.deleteCase(itemToDelete.value.id);
+      await collectionStore.deleteCollection(itemToDelete.value.id);
     }
   } catch (e) {
     console.error(e);
@@ -102,23 +106,35 @@ const openForm = (data, actionType) => {
   formData.value = isEditing.value ? { ...data } : { name: '' };
   currentNode.value = data;
 
-  if (actionType === 'createCase') {
-    formHeader.value = 'New Case';
+  if (actionType === 'createCollection') {
+    formHeader.value = 'New Collection';
   } else {
-    formHeader.value = `Edit Case`;
+    formHeader.value = `Edit Collection`;
   }
 
   isFormVisible.value = true;
 };
 
-// Saves the case form data
+// Saves the collection form data
 const saveForm = async () => {
   formLoading.value = true;
   try {
     if (!isEditing.value) {
-      await caseStore.createCase(formData.value);
+      if (!formData.value.name || formData.value.name.trim() === '') {
+        formData.value.name = new Date().toLocaleString(
+          new Intl.Locale(navigator.language || 'en-US'),
+          {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          }
+        );
+      }
+      await collectionStore.createCollection(caseId, formData.value);
     } else {
-      await caseStore.updateCase(currentNode.value.id, formData.value);
+      await collectionStore.updateCollection(currentNode.value.id, formData.value);
     }
     isFormVisible.value = false;
   } catch (e) {
@@ -128,9 +144,9 @@ const saveForm = async () => {
   }
 };
 
-// Navigates to the collections page for a case
-const viewCollections = data => {
-  router.push(`/cases/${data.id}/collections`);
+// Navigates to the files page for a collection
+const viewFiles = data => {
+  router.push(`/collections/${data.id}/files`);
 };
 
 // Formats a date string or object
@@ -146,12 +162,14 @@ const formatDate = date => {
 
 <template>
   <div class="h-full flex flex-col p-6 w-full gap-6">
-    <div class="flex items-center justify-center">
-      <div>
-        <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-0 mb-2">
-          Welcome back Ahmed
-        </h1>
-      </div>
+    <div class="flex items-center justify-between">
+      <Button
+        icon="pi pi-arrow-left"
+        label="Back to Cases"
+        severity="secondary"
+        text
+        @click="router.push('/cases')"
+      />
     </div>
 
     <div
@@ -159,7 +177,7 @@ const formatDate = date => {
     >
       <DataTable
         v-model:filters="filters"
-        :value="cases"
+        :value="collections"
         :paginator="true"
         :rows="rows"
         :loading="loading"
@@ -177,18 +195,20 @@ const formatDate = date => {
             class="flex flex-col sm:flex-row flex-wrap justify-between items-center gap-4 p-4 border-b border-surface-200 dark:border-surface-700"
           >
             <div>
-              <h2 class="text-xl font-semibold text-surface-900 dark:text-surface-0">Cases</h2>
+              <h2 class="text-xl font-semibold text-surface-900 dark:text-surface-0">
+                Collections
+              </h2>
               <p class="text-surface-500 dark:text-surface-400">
-                Manage your cases here. Select a case to view its collections.
+                Manage collections for this case. Select a collection to view its files.
               </p>
             </div>
             <div class="flex items-center gap-2">
               <Button
                 type="button"
                 icon="pi pi-fw pi-plus"
-                label="New Case"
+                label="New Collection"
                 severity="primary"
-                @click="openForm(null, 'createCase')"
+                @click="openForm(null, 'createCollection')"
               />
               <Button
                 type="button"
@@ -213,8 +233,8 @@ const formatDate = date => {
           <div
             class="flex flex-col items-center justify-center p-12 text-surface-500 dark:text-surface-400"
           >
-            <i class="pi pi-briefcase text-6xl mb-4 text-surface-300 dark:text-surface-600"></i>
-            <p class="text-lg">No cases found.</p>
+            <i class="pi pi-folder text-6xl mb-4 text-surface-300 dark:text-surface-600"></i>
+            <p class="text-lg">No collections found.</p>
           </div>
         </template>
 
@@ -231,9 +251,9 @@ const formatDate = date => {
           <template #body="{ data }">
             <span
               class="flex items-center gap-2 font-medium cursor-pointer hover:text-primary-500 transition-colors"
-              @click="viewCollections(data)"
+              @click="viewFiles(data)"
             >
-              <i class="pi pi-briefcase text-primary-500 text-lg"></i>
+              <i class="pi pi-folder text-yellow-500 text-lg"></i>
               <span>{{ data.name }}</span>
             </span>
           </template>
@@ -279,22 +299,22 @@ const formatDate = date => {
           <template #body="{ data }">
             <div class="flex gap-2">
               <Button
-                icon="pi pi-folder-open"
-                label="Collections"
+                icon="pi pi-file"
+                label="Files"
                 severity="info"
                 text
                 rounded
-                aria-label="View Collections"
-                title="View Collections"
-                @click="viewCollections(data)"
+                aria-label="View Files"
+                title="View Files"
+                @click="viewFiles(data)"
               />
               <Button
                 icon="pi pi-pencil"
                 severity="secondary"
                 text
                 rounded
-                aria-label="Edit Case"
-                title="Edit Case"
+                aria-label="Edit Collection"
+                title="Edit Collection"
                 @click="openForm(data, 'edit')"
               />
               <Button
@@ -302,8 +322,8 @@ const formatDate = date => {
                 severity="danger"
                 text
                 rounded
-                aria-label="Delete Case"
-                title="Delete Case"
+                aria-label="Delete Collection"
+                title="Delete Collection"
                 @click="openDeleteConfirm(data)"
               />
             </div>

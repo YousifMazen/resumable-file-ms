@@ -1,8 +1,9 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import AppConfigurator from './AppConfigurator.vue';
+import { useTransferStore } from '@/stores/TransferStore';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+const transferStore = useTransferStore();
 </script>
 
 <template>
@@ -50,54 +51,14 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
         <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
           <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>
         </button>
-        <div class="relative">
-          <button
-            v-styleclass="{
-              selector: '@next',
-              enterFromClass: 'hidden',
-              enterActiveClass: 'p-anchored-overlay-enter-active',
-              leaveToClass: 'hidden',
-              leaveActiveClass: 'p-anchored-overlay-leave-active',
-              hideOnOutsideClick: true,
-            }"
-            type="button"
-            class="layout-topbar-action layout-topbar-action-highlight"
-          >
-            <i class="pi pi-palette"></i>
-          </button>
-          <AppConfigurator />
-        </div>
-      </div>
-
-      <button
-        class="layout-topbar-menu-button layout-topbar-action"
-        v-styleclass="{
-          selector: '@next',
-          enterFromClass: 'hidden',
-          enterActiveClass: 'p-anchored-overlay-enter-active',
-          leaveToClass: 'hidden',
-          leaveActiveClass: 'p-anchored-overlay-leave-active',
-          hideOnOutsideClick: true,
-        }"
-      >
-        <i class="pi pi-ellipsis-v"></i>
-      </button>
-
-      <div class="layout-topbar-menu hidden lg:block">
-        <div class="layout-topbar-menu-content">
-          <button type="button" class="layout-topbar-action">
-            <i class="pi pi-calendar"></i>
-            <span>Calendar</span>
-          </button>
-          <button type="button" class="layout-topbar-action">
-            <i class="pi pi-inbox"></i>
-            <span>Messages</span>
-          </button>
-          <button type="button" class="layout-topbar-action">
-            <i class="pi pi-user"></i>
-            <span>Profile</span>
-          </button>
-        </div>
+        <button
+          type="button"
+          class="layout-topbar-action"
+          @click="transferStore.togglePanel()"
+          title="Transfers"
+        >
+          <i class="pi pi-cloud-upload"></i>
+        </button>
       </div>
     </div>
   </div>

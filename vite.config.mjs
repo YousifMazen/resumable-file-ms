@@ -11,6 +11,11 @@ export default defineConfig({
   optimizeDeps: {
     noDiscovery: true,
   },
+  server: {
+    watch: {
+      ignored: ['**/db.json'],
+    },
+  },
   plugins: [
     vue(),
     tailwindcss(),

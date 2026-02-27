@@ -10,8 +10,22 @@ const router = createRouter({
       children: [
         {
           path: '/',
-          name: 'dashboard',
-          component: () => import('@/views/Dashboard.vue'),
+          redirect: '/cases',
+        },
+        {
+          path: '/cases',
+          name: 'cases',
+          component: () => import('@/views/Dashboard.vue'), // Acting as Cases page
+        },
+        {
+          path: '/cases/:id/collections',
+          name: 'collections',
+          component: () => import('@/views/CollectionsPage.vue'),
+        },
+        {
+          path: '/collections/:id/files',
+          name: 'files',
+          component: () => import('@/views/FilesPage.vue'),
         },
         {
           path: '/uikit/formlayout',

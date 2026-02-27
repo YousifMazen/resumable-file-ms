@@ -1,0 +1,449 @@
+<script setup>
+/**
+ * FilesPage Component
+ *
+ * Displays and manages the list of files within a specific collection.
+ * Features include:
+ * - Data table with sorting and filtering
+ * - Global search
+ * - File upload simulation (creates record and starts transfer)
+ * - File download simulation
+ * - File record management (edit/delete)
+ * - Real-time transfer progress tracking via TransferStore
+ */
+import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue';
+import FormDialog from '@/components/dialogs/FormDialog.vue';
+import { useFileStore } from '@/stores/FileStore';
+import { useTransferStore } from '@/stores/TransferStore';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import { storeToRefs } from 'pinia';
+import Button from 'primevue/button';
+import Column from 'primevue/column';
+import DataTable from 'primevue/datatable';
+import DatePicker from 'primevue/datepicker';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
+import InputText from 'primevue/inputtext';
+import ProgressBar from 'primevue/progressbar';
+import { onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+
+const route = useRoute();
+const router = useRouter();
+const collectionId = route.params.id;
+
+const fileStore = useFileStore();
+const transferStore = useTransferStore();
+const { files, loading } = storeToRefs(fileStore);
+
+const rows = ref(10);
+const filters = ref();
+
+/**
+ * Initializes table filters with default match modes for global search, name, and date.
+ */
+const initFilters = () => {
+  filters.value = {
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    name: {
+      operator: FilterOperator.AND,
+      constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }],
+    },
+    uploaded: {
+      operator: FilterOperator.AND,
+      constraints: [{ value: null, matchMode: FilterMatchMode.DATE_IS }],
+    },
+  };
+};
+
+initFilters();
+
+const clearFilters = () => {
+  initFilters();
+};
+
+onMounted(() => {
+  fileStore.loadFiles(collectionId);
+});
+
+// UI State for Dialogs
+const isConfirmVisible = ref(false);
+const confirmHeader = ref('');
+const confirmMessage = ref('');
+const itemToDelete = ref(null);
+
+const isFormVisible = ref(false);
+const formHeader = ref('');
+const formData = ref({});
+const isEditing = ref(false);
+const formLoading = ref(false);
+const currentNode = ref(null);
+
+// Dialog Actions
+const openDeleteConfirm = data => {
+  itemToDelete.value = data;
+  confirmHeader.value = `Delete File`;
+  confirmMessage.value = `Are you sure you want to delete ${data.name}?`;
+  isConfirmVisible.value = true;
+};
+
+// Executes the deletion of the selected file record.
+const confirmDelete = async () => {
+  try {
+    if (itemToDelete.value) {
+      await fileStore.deleteFile(itemToDelete.value.id);
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    isConfirmVisible.value = false;
+    itemToDelete.value = null;
+  }
+};
+
+// Opens the creation or update form dialog.
+const openForm = (data, actionType) => {
+  formLoading.value = false;
+  isEditing.value = actionType === 'edit';
+
+  if (actionType === 'uploadFile') {
+    // We can simulate creating a file record here, then trigger upload.
+    formData.value = { name: '' };
+    formHeader.value = 'Upload New File';
+  } else {
+    formData.value = isEditing.value ? { ...data } : { name: '' };
+    formHeader.value = `Edit File`;
+  }
+
+  currentNode.value = data;
+  isFormVisible.value = true;
+};
+
+// Saves the form data by either creating a new file record (and starting an upload)
+// or updating an existing one.
+const saveForm = async () => {
+  formLoading.value = true;
+  try {
+    if (!isEditing.value) {
+      // Create file record
+      const newFile = await fileStore.createFile(collectionId, formData.value);
+
+      // Also start upload via transfer store using a dummy JS file object
+      const dummyFile = new File(['dummy content'], formData.value.name || 'Unnamed File.txt', {
+        type: 'text/plain',
+      });
+      transferStore.startUpload(dummyFile, newFile.id);
+    } else {
+      await fileStore.updateFile(currentNode.value.id, formData.value);
+    }
+    isFormVisible.value = false;
+  } catch (e) {
+    console.error(e);
+  } finally {
+    formLoading.value = false;
+  }
+};
+
+// Starts a simulated file download.
+const downloadFile = data => {
+  transferStore.startDownload(data);
+};
+
+// Navigates back to the previous page.
+const goBack = () => {
+  router.go(-1);
+};
+
+// Formats a date string or object into a human-readable local format.
+const formatDate = date => {
+  if (!date) return '';
+  return new Date(date).toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+};
+</script>
+
+<template>
+  <div class="h-full flex flex-col p-6 w-full gap-6">
+    <div class="flex items-center justify-between">
+      <Button icon="pi pi-arrow-left" label="Back" severity="secondary" text @click="goBack" />
+    </div>
+
+    <div
+      class="card bg-surface-0 dark:bg-surface-900 shadow-sm border border-surface-200 dark:border-surface-700 rounded-xl overflow-hidden"
+    >
+      <DataTable
+        v-model:filters="filters"
+        :value="files"
+        :paginator="true"
+        :rows="rows"
+        :loading="loading"
+        :globalFilterFields="['name']"
+        filterDisplay="menu"
+        filterMode="lenient"
+        sortMode="single"
+        sortField="uploaded"
+        :sortOrder="-1"
+        removableSort
+        class="w-full"
+      >
+        <template #header>
+          <div
+            class="flex flex-col sm:flex-row flex-wrap justify-between items-center gap-4 p-4 border-b border-surface-200 dark:border-surface-700"
+          >
+            <div>
+              <h2 class="text-xl font-semibold text-surface-900 dark:text-surface-0">Files</h2>
+              <p class="text-surface-500 dark:text-surface-400">
+                Manage files for this collection.
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <Button
+                type="button"
+                icon="pi pi-fw pi-upload"
+                label="Upload File"
+                @click="openForm(null, 'uploadFile')"
+              />
+              <Button
+                type="button"
+                icon="pi pi-filter-slash"
+                label="Clear Filters"
+                outlined
+                @click="clearFilters()"
+              />
+              <IconField>
+                <InputIcon class="pi pi-search" />
+                <InputText
+                  v-model="filters['global'].value"
+                  placeholder="Global Search..."
+                  class="w-full sm:w-auto"
+                />
+              </IconField>
+            </div>
+          </div>
+        </template>
+
+        <template #empty>
+          <div
+            class="flex flex-col items-center justify-center p-12 text-surface-500 dark:text-surface-400"
+          >
+            <i class="pi pi-file text-6xl mb-4 text-surface-300 dark:text-surface-600"></i>
+            <p class="text-lg">No files found.</p>
+          </div>
+        </template>
+
+        <Column
+          field="name"
+          header="Name"
+          :sortable="true"
+          filterField="name"
+          style="min-width: 300px"
+        >
+          <template #filter="{ filterModel }">
+            <InputText v-model="filterModel.value" type="text" placeholder="Search by name" />
+          </template>
+          <template #body="{ data }">
+            <span class="flex items-center gap-2 font-medium">
+              <i class="pi pi-file text-blue-400 text-lg"></i>
+              <span>{{ data.name }}</span>
+            </span>
+          </template>
+        </Column>
+
+        <Column
+          field="uploaded"
+          header="Uploaded Date"
+          :sortable="true"
+          filterField="uploaded"
+          dataType="date"
+          style="min-width: 200px"
+        >
+          <template #filter="{ filterModel }">
+            <DatePicker v-model="filterModel.value" dateFormat="M d, yy" placeholder="mm/dd/yyyy" />
+          </template>
+          <template #body="{ data }">
+            <span v-if="data.uploaded" class="text-surface-600 dark:text-surface-300">{{
+              formatDate(data.uploaded)
+            }}</span>
+          </template>
+        </Column>
+
+        <Column header="Status" :sortable="false" style="min-width: 250px">
+          <template #body="{ data }">
+            <!-- Upload Transfer UI -->
+            <div
+              v-if="transferStore.uploads[data.id]"
+              class="flex items-center gap-2 w-full text-xs"
+            >
+              <div
+                v-if="transferStore.uploads[data.id].status === 'completed'"
+                class="flex items-center gap-1 text-green-500 font-medium whitespace-nowrap"
+              >
+                <i class="pi pi-check-circle"></i> Completed
+              </div>
+              <div
+                v-else-if="transferStore.uploads[data.id].status === 'error'"
+                class="flex items-center gap-1 text-red-500 font-medium whitespace-nowrap"
+              >
+                <i class="pi pi-exclamation-circle"></i> Failed
+              </div>
+              <template v-else>
+                <ProgressBar
+                  :value="transferStore.uploads[data.id].progress || 0"
+                  style="height: 1.5rem; flex: 1"
+                  class="w-full text-xs font-semibold select-none flex items-center justify-center relative overflow-hidden"
+                ></ProgressBar>
+                <div class="text-surface-500 font-mono whitespace-nowrap w-12 text-right">
+                  {{ transferStore.uploads[data.id].status === 'paused' ? 'Paused' : '1.2M/s' }}
+                </div>
+                <div class="flex gap-0 items-center justify-center shrink-0">
+                  <Button
+                    v-if="transferStore.uploads[data.id].status === 'uploading'"
+                    icon="pi pi-pause"
+                    text
+                    rounded
+                    style="width: 1.5rem; height: 1.5rem; padding: 0"
+                    @click="transferStore.pauseUpload(data.id)"
+                  />
+                  <Button
+                    v-if="transferStore.uploads[data.id].status === 'paused'"
+                    icon="pi pi-play"
+                    text
+                    rounded
+                    style="width: 1.5rem; height: 1.5rem; padding: 0"
+                    @click="transferStore.resumeUpload(data.id)"
+                  />
+                  <Button
+                    icon="pi pi-times"
+                    text
+                    rounded
+                    severity="danger"
+                    style="width: 1.5rem; height: 1.5rem; padding: 0"
+                    @click="transferStore.cancelUpload(data.id)"
+                  />
+                </div>
+              </template>
+            </div>
+
+            <!-- Download Transfer UI -->
+            <div
+              v-else-if="transferStore.downloads[data.id]"
+              class="flex items-center gap-2 w-full text-xs"
+            >
+              <div
+                v-if="transferStore.downloads[data.id].status === 'completed'"
+                class="flex items-center gap-1 text-green-500 font-medium whitespace-nowrap"
+              >
+                <i class="pi pi-check-circle"></i> Completed
+              </div>
+              <div
+                v-else-if="transferStore.downloads[data.id].status === 'error'"
+                class="flex items-center gap-1 text-red-500 font-medium whitespace-nowrap"
+              >
+                <i class="pi pi-exclamation-circle"></i> Failed
+              </div>
+              <template v-else>
+                <ProgressBar
+                  :value="transferStore.downloads[data.id].progress || 0"
+                  style="height: 1.5rem; flex: 1"
+                  class="w-full text-xs font-semibold select-none flex items-center justify-center relative overflow-hidden"
+                ></ProgressBar>
+                <div class="text-surface-500 font-mono whitespace-nowrap w-12 text-right">
+                  {{ transferStore.downloads[data.id].status === 'paused' ? 'Paused' : '2.4M/s' }}
+                </div>
+                <div class="flex gap-0 items-center justify-center shrink-0">
+                  <Button
+                    v-if="transferStore.downloads[data.id].status === 'downloading'"
+                    icon="pi pi-pause"
+                    text
+                    rounded
+                    style="width: 1.5rem; height: 1.5rem; padding: 0"
+                    @click="transferStore.pauseDownload(data.id)"
+                  />
+                  <Button
+                    v-if="transferStore.downloads[data.id].status === 'paused'"
+                    icon="pi pi-play"
+                    text
+                    rounded
+                    style="width: 1.5rem; height: 1.5rem; padding: 0"
+                    @click="transferStore.resumeDownload(data.id)"
+                  />
+                  <Button
+                    icon="pi pi-times"
+                    text
+                    rounded
+                    severity="danger"
+                    style="width: 1.5rem; height: 1.5rem; padding: 0"
+                    @click="transferStore.cancelDownload(data.id)"
+                  />
+                </div>
+              </template>
+            </div>
+
+            <!-- Idle UI -->
+            <div v-else class="text-surface-400 dark:text-surface-500 italic text-sm">Ready</div>
+          </template>
+        </Column>
+
+        <Column header="Actions" :sortable="false" style="min-width: 150px">
+          <template #body="{ data }">
+            <div class="flex gap-2">
+              <Button
+                v-if="!transferStore.downloads[data.id] && !transferStore.uploads[data.id]"
+                icon="pi pi-download"
+                severity="info"
+                text
+                rounded
+                aria-label="Download"
+                title="Download"
+                @click="downloadFile(data)"
+              />
+              <Button
+                icon="pi pi-pencil"
+                severity="secondary"
+                text
+                rounded
+                aria-label="Edit File"
+                title="Edit File"
+                @click="openForm(data, 'edit')"
+              />
+              <Button
+                icon="pi pi-trash"
+                severity="danger"
+                text
+                rounded
+                aria-label="Delete File"
+                title="Delete File"
+                @click="openDeleteConfirm(data)"
+              />
+            </div>
+          </template>
+        </Column>
+      </DataTable>
+    </div>
+
+    <!-- Dialogs -->
+    <ConfirmDialog
+      v-model:visible="isConfirmVisible"
+      :header="confirmHeader"
+      :message="confirmMessage"
+      @accept="confirmDelete"
+    />
+
+    <FormDialog
+      v-model:visible="isFormVisible"
+      :header="formHeader"
+      :loading="formLoading"
+      @save="saveForm"
+    >
+      <form class="flex flex-col gap-4" @submit.prevent="saveForm">
+        <div class="flex flex-col gap-2">
+          <label for="name" class="font-semibold">Name</label>
+          <InputText id="name" v-model="formData.name" placeholder="Enter name..." autofocus />
+        </div>
+      </form>
+    </FormDialog>
+  </div>
+</template>
