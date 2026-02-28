@@ -152,8 +152,13 @@ export const useTransferStore = defineStore('transfer', () => {
    * @param {string} fileRecord.id - File ID
    * @param {string} [fileRecord.name] - File name
    */
-  const startDownload = fileRecord => {
+  const startDownload = async fileRecord => {
     const id = fileRecord.id || Date.now().toString();
+
+    if (downloads.value[id] && ['downloading', 'paused'].includes(downloads.value[id].status)) {
+      console.warn(`[TransferStore] Download for ${id} is already in progress or paused.`);
+      return;
+    }
 
     downloads.value[id] = {
       id,
@@ -164,24 +169,41 @@ export const useTransferStore = defineStore('transfer', () => {
       abortController: null,
     };
 
-    const controller = DownloadService.startDownload(id, {
-      onProgress: (p, speed = 0) => {
-        if (downloads.value[id]) {
-          downloads.value[id].progress = p;
-          downloads.value[id].speed = speed;
-        }
-      },
-      onSuccess: () => {
-        if (downloads.value[id]) downloads.value[id].status = 'completed';
-      },
-      onError: () => {
-        if (downloads.value[id]) downloads.value[id].status = 'error';
-      },
-    });
-
-    downloads.value[id].abortController = controller;
-    panelVisible.value = true;
+    // Reactivity
     downloads.value = { ...downloads.value };
+
+    try {
+      const controller = await DownloadService.startDownload(id, fileRecord, {
+        onProgress: (p, speed = 0) => {
+          if (downloads.value[id] && downloads.value[id].status !== 'error') {
+            downloads.value[id].progress = p;
+            downloads.value[id].speed = speed;
+          }
+        },
+        onSuccess: () => {
+          if (downloads.value[id]) {
+            downloads.value[id].status = 'completed';
+            downloads.value[id].progress = 100;
+          }
+        },
+        onError: () => {
+          if (downloads.value[id]) downloads.value[id].status = 'error';
+        },
+      });
+
+      // It's possible the download was cancelled or finished very fast before we got the controller assigned
+      if (downloads.value[id]) {
+        downloads.value[id].abortController = controller;
+        panelVisible.value = true;
+      }
+    } catch (e) {
+      if (e.message === 'USER_CANCELLED') {
+        delete downloads.value[id];
+        downloads.value = { ...downloads.value };
+      } else {
+        if (downloads.value[id]) downloads.value[id].status = 'error';
+      }
+    }
   };
 
   /**

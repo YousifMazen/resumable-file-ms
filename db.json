@@ -21,8 +21,38 @@
       "name": "Case #1",
       "created": "2026-02-26T12:00:00Z",
       "updated": "2026-02-26T12:00:00Z"
+    },
+    {
+      "id": "c2",
+      "name": "Downloadable",
+      "created": "2026-02-28T12:00:00.000Z",
+      "updated": "2026-02-28T18:59:00.082Z"
     }
   ],
-  "collections": [],
-  "files": []
+  "collections": [
+    {
+      "id": "col1",
+      "name": "files to download",
+      "caseId": "c2",
+      "created": "2026-02-28T12:00:00Z"
+    }
+  ],
+  "files": [
+    {
+      "id": "f1",
+      "name": "10 Programmer Stereotypes.mp4",
+      "collectionId": "col1",
+      "uploaded": "2026-02-28T12:00:00Z",
+      "type": "video/mp4",
+      "size": 1074159347
+    },
+    {
+      "id": "f2",
+      "name": "Design Film _ Galaxy Book6 Pro _ Samsung.mp4",
+      "collectionId": "col1",
+      "uploaded": "2026-02-28T12:00:00Z",
+      "type": "video/mp4",
+      "size": 694827652
+    }
+  ]
 }
