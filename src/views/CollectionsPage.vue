@@ -11,6 +11,7 @@
  */
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue';
 import FormDialog from '@/components/dialogs/FormDialog.vue';
+import { useAuthStore } from '@/stores/AuthStore';
 import { useCollectionStore } from '@/stores/CollectionStore';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { storeToRefs } from 'pinia';
@@ -21,7 +22,7 @@ import DatePicker from 'primevue/datepicker';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -29,6 +30,8 @@ const router = useRouter();
 const caseId = route.params.id;
 
 const collectionStore = useCollectionStore();
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role === 'admin');
 const { collections, loading } = storeToRefs(collectionStore);
 
 const rows = ref(10);
@@ -204,6 +207,7 @@ const formatDate = date => {
             </div>
             <div class="flex items-center gap-2">
               <Button
+                v-if="isAdmin"
                 type="button"
                 icon="pi pi-fw pi-plus"
                 label="New Collection"
@@ -309,6 +313,7 @@ const formatDate = date => {
                 @click="viewFiles(data)"
               />
               <Button
+                v-if="isAdmin"
                 icon="pi pi-pencil"
                 severity="secondary"
                 text
@@ -318,6 +323,7 @@ const formatDate = date => {
                 @click="openForm(data, 'edit')"
               />
               <Button
+                v-if="isAdmin"
                 icon="pi pi-trash"
                 severity="danger"
                 text

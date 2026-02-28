@@ -10,6 +10,7 @@
  */
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue';
 import FormDialog from '@/components/dialogs/FormDialog.vue';
+import { useAuthStore } from '@/stores/AuthStore';
 import { useCaseStore } from '@/stores/CaseStore';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
 import { storeToRefs } from 'pinia';
@@ -20,11 +21,13 @@ import DatePicker from 'primevue/datepicker';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
 const caseStore = useCaseStore();
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role === 'admin');
 const { cases, loading } = storeToRefs(caseStore);
 
 const rows = ref(10);
@@ -149,7 +152,7 @@ const formatDate = date => {
     <div class="flex items-center justify-center">
       <div>
         <h1 class="text-3xl font-bold text-surface-900 dark:text-surface-0 mb-2">
-          Welcome back Ahmed
+          Welcome back {{ authStore.user?.username || 'Guest' }}
         </h1>
       </div>
     </div>
@@ -184,6 +187,7 @@ const formatDate = date => {
             </div>
             <div class="flex items-center gap-2">
               <Button
+                v-if="isAdmin"
                 type="button"
                 icon="pi pi-fw pi-plus"
                 label="New Case"
@@ -289,6 +293,7 @@ const formatDate = date => {
                 @click="viewCollections(data)"
               />
               <Button
+                v-if="isAdmin"
                 icon="pi pi-pencil"
                 severity="secondary"
                 text
@@ -298,6 +303,7 @@ const formatDate = date => {
                 @click="openForm(data, 'edit')"
               />
               <Button
+                v-if="isAdmin"
                 icon="pi pi-trash"
                 severity="danger"
                 text

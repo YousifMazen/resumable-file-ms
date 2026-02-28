@@ -13,6 +13,7 @@
  */
 import ConfirmDialog from '@/components/dialogs/ConfirmDialog.vue';
 import FormDialog from '@/components/dialogs/FormDialog.vue';
+import { useAuthStore } from '@/stores/AuthStore';
 import { useFileStore } from '@/stores/FileStore';
 import { useTransferStore } from '@/stores/TransferStore';
 import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
@@ -26,7 +27,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import ProgressBar from 'primevue/progressbar';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
@@ -35,6 +36,8 @@ const collectionId = route.params.id;
 
 const fileStore = useFileStore();
 const transferStore = useTransferStore();
+const authStore = useAuthStore();
+const isAdmin = computed(() => authStore.user?.role === 'admin');
 const { files, loading } = storeToRefs(fileStore);
 
 const rows = ref(10);
@@ -241,6 +244,7 @@ const formatSpeed = bytes => {
             </div>
             <div class="flex items-center gap-2">
               <Button
+                v-if="isAdmin"
                 type="button"
                 icon="pi pi-fw pi-upload"
                 label="Upload File"
@@ -450,8 +454,9 @@ const formatSpeed = bytes => {
               />
               <Button
                 v-if="
-                  !transferStore.uploads[data.id] ||
-                  transferStore.uploads[data.id].status === 'completed'
+                  isAdmin &&
+                  (!transferStore.uploads[data.id] ||
+                    transferStore.uploads[data.id].status === 'completed')
                 "
                 icon="pi pi-pencil"
                 severity="secondary"
@@ -463,8 +468,9 @@ const formatSpeed = bytes => {
               />
               <Button
                 v-if="
-                  !transferStore.uploads[data.id] ||
-                  transferStore.uploads[data.id].status === 'completed'
+                  isAdmin &&
+                  (!transferStore.uploads[data.id] ||
+                    transferStore.uploads[data.id].status === 'completed')
                 "
                 icon="pi pi-trash"
                 severity="danger"

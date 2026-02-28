@@ -1,15 +1,22 @@
 import AppLayout from '@/layout/AppLayout.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
+import { useAuthStore } from '@/stores/AuthStore';
+
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     {
       path: '/',
+      name: 'login',
+      component: () => import('@/views/pages/auth/Login.vue'),
+    },
+    {
+      path: '/dashboard-layout',
       component: AppLayout,
       children: [
         {
-          path: '/',
+          path: '/dashboard',
           redirect: '/cases',
         },
         {
@@ -141,8 +148,7 @@ const router = createRouter({
 
     {
       path: '/auth/login',
-      name: 'login',
-      component: () => import('@/views/pages/auth/Login.vue'),
+      redirect: '/',
     },
     {
       path: '/auth/access',
@@ -155,6 +161,25 @@ const router = createRouter({
       component: () => import('@/views/pages/auth/Error.vue'),
     },
   ],
+});
+
+router.beforeEach((to, from, next) => {
+  const authStore = useAuthStore();
+  const publicPages = [
+    '/',
+    '/auth/login',
+    '/landing',
+    '/pages/notfound',
+    '/auth/access',
+    '/auth/error',
+  ];
+  const authRequired = !publicPages.includes(to.path);
+
+  if (authRequired && !authStore.isAuthenticated) {
+    return next('/auth/access');
+  }
+
+  next();
 });
 
 export default router;

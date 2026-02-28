@@ -1,9 +1,18 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
+import { useAuthStore } from '@/stores/AuthStore';
 import { useTransferStore } from '@/stores/TransferStore';
+import { useRouter } from 'vue-router';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 const transferStore = useTransferStore();
+const authStore = useAuthStore();
+const router = useRouter();
+
+const onLogout = async () => {
+  await authStore.logout();
+  router.push('/');
+};
 </script>
 
 <template>
@@ -58,6 +67,9 @@ const transferStore = useTransferStore();
           title="Transfers"
         >
           <i class="pi pi-cloud-upload"></i>
+        </button>
+        <button type="button" class="layout-topbar-action" @click="onLogout" title="Logout">
+          <i class="pi pi-sign-out"></i>
         </button>
       </div>
     </div>

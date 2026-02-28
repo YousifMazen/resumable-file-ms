@@ -1,16 +1,31 @@
 <script setup>
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
+import { useAuthStore } from '@/stores/AuthStore';
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 const email = ref('');
 const password = ref('');
 const checked = ref(false);
+
+const router = useRouter();
+const authStore = useAuthStore();
+
+const handleLogin = async () => {
+  if (!email.value || !password.value) return;
+  try {
+    await authStore.login(email.value, password.value);
+    router.push('/cases');
+  } catch (error) {
+    // Error is handled in store, can optionally show a toast here
+  }
+};
 </script>
 
 <template>
   <FloatingConfigurator />
   <div
-    class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-[100vw] overflow-hidden"
+    class="bg-surface-50 dark:bg-surface-950 flex items-center justify-center min-h-screen min-w-screen overflow-hidden"
   >
     <div class="flex flex-col items-center justify-center">
       <div
@@ -74,7 +89,7 @@ const checked = ref(false);
               id="email1"
               type="text"
               placeholder="Email address"
-              class="w-full md:w-[30rem] mb-8"
+              class="w-full md:w-120 mb-8"
               v-model="email"
             />
 
@@ -93,16 +108,15 @@ const checked = ref(false);
               :feedback="false"
             ></Password>
 
-            <div class="flex items-center justify-between mt-2 mb-8 gap-8">
-              <div class="flex items-center">
-                <Checkbox v-model="checked" id="rememberme1" binary class="mr-2"></Checkbox>
-                <label for="rememberme1">Remember me</label>
-              </div>
-              <span class="font-medium no-underline ml-2 text-right cursor-pointer text-primary"
-                >Forgot password?</span
-              >
+            <Button
+              label="Sign In"
+              class="w-full"
+              @click="handleLogin"
+              :loading="authStore.loading"
+            ></Button>
+            <div v-if="authStore.error" class="text-red-500 mt-4 text-center">
+              {{ authStore.error }}
             </div>
-            <Button label="Sign In" class="w-full" as="router-link" to="/"></Button>
           </div>
         </div>
       </div>
